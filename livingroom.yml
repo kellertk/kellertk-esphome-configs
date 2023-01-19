@@ -1,0 +1,119 @@
+esphome:
+  name: livingroom-obsfucated
+  comment: Garage Environment Sensors
+  project:
+    name: kellertk.kellertk-esphome-configs
+    version: "1.0.0"
+  on_boot:
+    if:
+      condition:
+        wifi.connected:
+      then:
+        - logger.log:
+            format: "My IP address is %s"
+            args: [ 'id(my_ip).state ']
+preferences:
+  flash_write_interval: 10min
+# Platform
+esp8266:
+  board: huzzah
+  framework:
+    version: recommended
+
+sensor:
+  - platform: sht3xd
+    temperature:
+      name: Living Room Temperature
+      id: sht3xd_temp
+      filters:
+        - filter_out: nan
+        - throttle_average: 60s
+    humidity:
+      name: Living Room Humidity
+      filters:
+        - filter_out: nan
+        - throttle_average: 60s
+    address: 0x44
+  - platform: wifi_signal
+    name: WiFi Signal dB
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: diagnostic
+  - platform: uptime
+    name: Living Room ESP Uptime
+    entity_category: diagnostic
+    update_interval: 60s
+
+# Computed Sensors
+  - platform: copy
+    source_id: wifi_signal_db
+    name: WiFi Signal %
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: Signal %
+    entity_category: diagnostic
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: Living Room ESP IP
+      id: my_ip
+      entity_category: diagnostic
+      update_interval: 60s
+    ssid:
+      name: Living Room ESP SSID
+      entity_category: diagnostic
+      update_interval: 60s
+    bssid:
+      name: Living Room ESP BSSID
+      entity_category: diagnostic
+      update_interval: 60s
+
+# LED to make sure we're cool
+status_led:
+  pin:
+    number: GPIO0
+    inverted: true
+output:
+  - platform: gpio
+    pin:
+      number: GPIO2
+      mode: OUTPUT_OPEN_DRAIN
+      inverted: true
+    id: blueled
+# Core components
+logger:
+  on_message:
+    level: DEBUG
+    then:
+      - output.turn_on: blueled
+      - delay: 10ms
+      - output.turn_off: blueled
+api:
+  password: obsfucated
+  encryption:
+    key: obsfucated
+  reboot_timeout: 5min
+ota:
+  password: obsfucated
+wifi:
+  ap: {}
+  ssid: obsfucated
+  password: obsfucated
+  fast_connect: true
+  power_save_mode: high
+  domain: .iot.tompkel.net
+i2c:
+  - id: bus_a
+    sda: 4
+    scl: 5
+    scan: true
+#  - id: bus_b
+#    sda: 14
+#    scl: 15
+#    scan: true
+#web_server:
+#  js_include: "./web_server/www.js"
+#  js_url: ""
+#  version: 2
+#  ota: false

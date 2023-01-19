@@ -1,0 +1,134 @@
+esphome:
+  name: garage
+  comment: Garage Environment Sensors
+  name_add_mac_suffix: true
+  libraries:
+    - khoih-prog/AsyncWebServer_RP2040W
+  project:
+    name: kellertk.kellertk-esphome-configs
+    version: "1.0.0"
+  on_boot:
+    if:
+      condition:
+        wifi.connected:
+      then:
+        - logger.log:
+            format: "My IP address is %s"
+            args: [ 'id(my_ip).state ']
+preferences:
+  flash_write_interval: 10min
+# Platform
+rp2040:
+  board: rpipicow
+  framework:
+    platform_version: https://github.com/maxgerhardt/platform-raspberrypi.git
+
+# Sensors
+sensor:
+  - platform: sht3xd
+    temperature:
+      id: sht3xd_temp
+    humidity:
+      name: Garage Humidity
+      id: sht3xd_humid
+    address: 0x44
+  - platform: bmp3xx
+    pressure:
+      name: Garage Barometric Pressure
+      id: bmp3xx_baro
+    temperature:
+      id: bmp3xx_temp
+    address: 0x77
+  - platform: sgp4x
+    voc:
+      name: Garage VOC Index
+    compensation:
+      humidity_source: sht3xd_humid
+      temperature_source: sht3xd_temp
+    address: 0x59
+  - platform: wifi_signal
+    name: WiFi Signal dB
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: diagnostic
+  - platform: uptime
+    name: Garage RP2040 Uptime
+    entity_category: diagnostic
+
+# Computed Sensors
+  - platform: kalman_combinator
+    name: Garage Temperature
+    process_std_dev: 0.001
+    sources:
+      - source: sht3xd_temp
+        error: 0.5
+      - source: bmp3xx_temp
+        error: 1.0
+  - platform: copy
+    source_id: wifi_signal_db
+    name: WiFi Signal %
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: Signal %
+    entity_category: diagnostic
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: Garage RP2040 IP
+      id: my_ip
+      entity_category: diagnostic
+    ssid:
+      name: Garage RP2040 SSID
+      entity_category: diagnostic
+    bssid:
+      name: Garage RP2040 BSSID
+      entity_category: diagnostic
+
+# LED to make sure we're cool
+status_led:
+  pin:
+    number: 32
+output:
+  - platform: gpio
+    pin:
+      number: 9
+      mode: output
+    id: ledoutput
+
+# Core components
+logger:
+  on_message:
+    level: DEBUG
+    then:
+      - output.turn_on: ledoutput
+      - delay: 10ms
+      - output.turn_off: ledoutput
+api:
+  password: obsfucated
+  encryption:
+    key: obsfucated
+  reboot_timeout: 5min
+ota:
+  password: obsfucated
+wifi:
+  ap: {}
+  ssid: obsfucated
+  password: obsfucated
+i2c:
+  - id: bus_a
+    sda: 16
+    scl: 17
+    scan: true
+#  - id: bus_b
+#    sda: 14
+#    scl: 15
+#    scan: true
+web_server:
+  js_include: "./web_server/www.js"
+  js_url: ""
+  version: 2
+  ota: false
+external_components:
+  - source: local_components
+    components: [ web_server, web_server_base, async_tcp, json ]

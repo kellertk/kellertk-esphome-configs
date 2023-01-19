@@ -1,0 +1,17 @@
+{
+  "name": "esphome",
+  "privileged": true,
+  "mounts": [
+    { "source": "${localWorkspaceFolder}", "target": "/config", "type": "bind" }
+  ],
+  "init": true,
+  "image": "esphome/esphome",
+  "containerEnv": { "TZ": "America/Los_Angeles" },
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "configureZshAsDefaultShell": true,
+      "username": "none"
+    }
+  },
+  "postAttachCommand": "zsh"
+}
